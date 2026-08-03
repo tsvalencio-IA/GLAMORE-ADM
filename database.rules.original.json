@@ -1,0 +1,121 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "gestores": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('gestores').child(auth.uid).val() === true)",
+        ".write": "auth != null && root.child('gestores').child(auth.uid).val() === true"
+      }
+    },
+    "empresas": {
+      "$empresaId": {
+        ".write": false,
+        "usuarios": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+            ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+          }
+        },
+        "configuracoes": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+        },
+        "tiposProduto": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+        },
+        "parametrosTecnicos": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+        },
+        "produtos": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "clientes": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "vendedores": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+        },
+        "pedidos": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "vendas": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "consignacoes": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "cadastrosMostruario": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "movimentos": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "estoqueMovimentos": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "producoes": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "producao": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+        },
+        "comissoes": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono')"
+        },
+        "auditoria": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)"
+        },
+        "iaConsultas": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)"
+        },
+        "$outros": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente')"
+        },
+        "pedidosProducao": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "lotes": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "inventariosEstoque": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "pecasEstoque": {
+          ".read": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+          ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'dono' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'gerente' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'vendedor' || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('papel').val() === 'atendente')"
+        },
+        "catalogosPublicos": {
+          ".read": true,
+          "$catalogoId": {
+            ".read": "data.child('status').val() === 'ativo' && data.child('publico').val() === true",
+            ".write": "auth != null && (root.child('gestores').child(auth.uid).val() === true || root.child('empresas').child($empresaId).child('usuarios').child(auth.uid).child('ativo').val() === true)",
+            ".validate": "newData.hasChildren(['criadoEm','status','publico'])"
+          }
+        }
+      }
+    }
+  }
+}
