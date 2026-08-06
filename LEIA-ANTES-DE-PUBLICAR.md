@@ -1,54 +1,41 @@
-# LEIA ANTES DE PUBLICAR
+# LEIA ANTES DE ATUALIZAR O GLAMORE-ADM
 
-Este ZIP é um **novo repositório independente**. Não substitua arquivos do repositório operacional `GlamoreJoias-main` por arquivos deste pacote.
+## O que será atualizado
 
-## O que o novo aplicativo acessa
+Somente o repositório novo `GLAMORE-ADM`.
 
-Leitura:
+O repositório operacional `GlamoreJoias` não deve receber nenhum arquivo deste pacote.
 
-```text
-empresas/empresa-principal/produtos
-empresas/empresa-principal/usuarios/{uid}
-gestores/{uid}
-```
+## Ordem segura
 
-Leitura e gravação:
+1. Guarde o ZIP atual do `GLAMORE-ADM`.
+2. Guarde a exportação atual do Realtime Database.
+3. Guarde uma cópia das regras atualmente publicadas.
+4. Substitua os arquivos do novo repositório pelo conteúdo deste pacote.
+5. Aguarde o GitHub Pages concluir o deploy.
+6. Entre com a conta do proprietário e confirme os 296 produtos.
+7. Abra `Acessos` e configure os usuários que poderão usar o novo módulo.
+8. Teste a tela `Automação em lote` sem salvar rascunhos.
+9. Somente depois publique o arquivo completo `database.rules.json` no Realtime Database.
+10. Teste primeiro o sistema operacional antigo.
+11. Teste depois o `GLAMORE-ADM`.
 
-```text
-empresas/empresa-principal/precificacao
-```
+## O que não fazer
 
-O código não possui operações de gravação para estoque, vendas, lotes, movimentos, produção, inventários ou clientes.
+- Não importar o JSON do banco no GitHub.
+- Não substituir o repositório do estoque.
+- Não apagar o nó `precificacao`.
+- Não copiar apenas um trecho das regras.
+- Não usar o arquivo `database.rules.original.json` como regra nova; ele é o backup anterior.
+- Não publicar preços reais durante a homologação.
 
-## Ordem obrigatória
+## Rollback das regras
 
-1. No Firebase Console, exporte novamente o Realtime Database e guarde o arquivo.
-2. Copie e guarde as regras atuais antes de qualquer publicação.
-3. Compare as regras atuais com `database.rules.original.json`. Esse arquivo corresponde às regras enviadas para a construção do pacote.
-4. Publique `database.rules.json` no Realtime Database.
-5. Não importe nenhum JSON de dados deste ZIP na raiz do banco.
-6. Crie um repositório vazio no GitHub.
-7. Envie o conteúdo da pasta raiz deste ZIP para o novo repositório.
-8. Importe o novo repositório na Vercel.
-9. Abra o novo domínio e entre primeiro com a conta do proprietário.
-10. A primeira entrada inicializará apenas `empresas/empresa-principal/precificacao`.
-11. Confira no Firebase se nenhum contador dos nós operacionais foi alterado.
-12. Cadastre valores reais somente depois de validar as fórmulas com o proprietário.
+Se houver erro de permissão após a publicação:
 
-## Nunca faça
+1. Abra Firebase Console → Realtime Database → Regras.
+2. Copie integralmente `database.rules.original.json`.
+3. Cole no editor.
+4. Publique.
 
-- Não importe `database.rules.json` como dados.
-- Não importe um arquivo de seed na raiz do banco.
-- Não apague o nó `empresas/empresa-principal`.
-- Não substitua o repositório atual por este.
-- Não dê acesso de publicação a usuários que não podem visualizar custos e margens.
-- Não trate a extração de PDF como informação confirmada sem revisão humana.
-
-## Rollback
-
-Se o novo aplicativo apresentar problema:
-
-1. retire o projeto novo do ar na Vercel;
-2. restaure as regras usando `database.rules.original.json`;
-3. mantenha ou remova somente o nó `empresas/empresa-principal/precificacao`;
-4. o repositório operacional continuará separado e não precisará de rollback.
+Isso restaura exatamente as regras fornecidas como atuais, sem apagar dados.

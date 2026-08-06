@@ -1,18 +1,22 @@
-GLAMORE CUSTOS & PRECIFICAÇÃO V1
+GLAMORE-ADM V1.1.0
 
 NOVO REPOSITÓRIO
-- node --check em todos os arquivos JavaScript: APROVADO
-- validação JSON de regras, package, manifest e Vercel: APROVADO
-- calculator.test.mjs: APROVADO
-- rules.test.mjs: APROVADO
-- structure.test.mjs: APROVADO
-- data-isolation.test.mjs: APROVADO
-- servidor estático local + leitura dos arquivos principais: APROVADO
+- calculator.test.mjs: aprovado
+- rules.test.mjs: aprovado
+- structure.test.mjs: aprovado
+- data-isolation.test.mjs: aprovado
+- sintaxe de todos os JavaScript: aprovada
+- JSON de regras: válido
 
-REPOSITÓRIO OPERACIONAL ORIGINAL
-- smoke-test.mjs: APROVADO
-- erp-business-rules.test.mjs: APROVADO
-- V56 até V69: APROVADO
+REPOSITÓRIO OPERACIONAL GLAMORE JOIAS V69
+- 15 testes oficiais executados
+- 15 testes aprovados
+- nenhum arquivo operacional alterado
 
-Nenhuma escrita foi realizada no Firebase real.
-Nenhum arquivo do repositório operacional foi alterado.
+VALIDAÇÕES ESPECÍFICAS
+- regras antigas preservadas estruturalmente
+- somente o nó precificacao recebeu regra nova
+- acesso isolado em precificacao/acessos
+- gerente sem publicação automática
+- automação em lote sem gravação automática
+- acabamento percentual sobre metal + pedras validado

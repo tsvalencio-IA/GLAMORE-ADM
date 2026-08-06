@@ -1,8 +1,8 @@
 {
   "name": "glamore-custos-precificacao",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Módulo profissional e isolado de custos e precificação da Glamore Joias, integrado ao Firebase Authentication e ao Realtime Database existentes.",
+  "description": "Módulo isolado de custos e precificação da Glamore Joias para GitHub Pages, integrado ao Firebase Authentication e Realtime Database existentes.",
   "type": "module",
   "scripts": {
     "test": "node tests/calculator.test.mjs && node tests/rules.test.mjs && node tests/structure.test.mjs && node tests/data-isolation.test.mjs",

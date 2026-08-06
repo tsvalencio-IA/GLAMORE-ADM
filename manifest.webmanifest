@@ -1,9 +1,10 @@
 {
   "name": "Glamore Custos & Precificação",
-  "short_name": "Glamore Custos",
+  "short_name": "Glamore ADM",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f4f0",
   "theme_color": "#17151b",
-  "icons": []
+  "icons": [],
+  "scope": "./"
 }
