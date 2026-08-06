@@ -52,4 +52,25 @@ assert.equal(result.comercial.lucroLiquidoUnitario, 54.12);
 assert.equal(result.projecao.producaoProjetada, 1400);
 assert.equal(result.projecao.vendaProjetada, 1120);
 
+const percentageFinish = calculatePricing({
+  sheet: {
+    materialId: "prata", pesoMetalGramas: 10, capacidadeMensal: 100,
+    pedras: [{ itemId: "z1", quantidade: 10 }], insumos: [], processos: [],
+    acabamentos: [{ itemId: "banho", quantidade: 1 }], embalagens: []
+  },
+  catalogs: {
+    materiais: { prata: { custoPorGrama: 5 } },
+    pedras: { z1: { nome: "Zircônia", precoUnitario: 1 } },
+    insumos: {}, processos: {},
+    acabamentos: { banho: { nome: "Banho", metodoCusto: "percentual_metal_pedras", precoUnitario: 5 } },
+    embalagens: {}
+  },
+  settings: { custoOperacionalMensal: 0, metodoRateio: "capacidade_global", capacidadeGlobalMensal: 100 },
+  commercial: { metodoPreco: "multiplicador", multiplicador: 1, impostoPercentual: 0, comissaoPercentual: 0, cartaoPercentual: 0 }
+});
+assert.equal(percentageFinish.custos.metal, 50);
+assert.equal(percentageFinish.custos.pedras, 10);
+assert.equal(percentageFinish.custos.acabamentos, 3);
+assert.equal(percentageFinish.custos.totalUnitario, 63);
+
 console.log("OK calculator.test.mjs");
