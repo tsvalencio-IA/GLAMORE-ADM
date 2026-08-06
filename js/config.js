@@ -3,8 +3,8 @@ export const APP_CONFIG = Object.freeze({
   app: {
     nome: "Glamore Custos & Precificação",
     subtitulo: "Engenharia de custos para prata, bronze e produtos banhados",
-    versao: "1.0.0",
-    build: "glamore-precificacao-rtdb-v1-20260803",
+    versao: "1.1.0",
+    build: "glamore-precificacao-rtdb-v1.1-20260805",
     assinatura: "Powered by thIAguinho Soluções Digitais"
   },
   firebase: {

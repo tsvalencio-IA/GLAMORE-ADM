@@ -27,17 +27,34 @@ export function calculateMetalCost(input = {}) {
   };
 }
 
-export function calculateComponentCost(component = {}, catalog = {}) {
+export function calculateComponentCost(component = {}, catalog = {}, context = {}) {
   const quantidade = nonNegative(component.quantidade || 1);
   const item = catalog[component.itemId] || component.itemSnapshot || {};
   const preco = nonNegative(component.precoUnitario ?? item.precoUnitario ?? item.custoUnitario);
   const perda = pct(component.perdaPercentual ?? item.perdaPercentual);
-  const custo = quantidade * preco * (1 + perda);
+  const metodoCusto = component.metodoCusto || item.metodoCusto || "unitario";
+  let baseCalculo = 0;
+  let custoBase = quantidade * preco;
+
+  if (metodoCusto === "percentual_metal_pedras") {
+    baseCalculo = nonNegative(context.metal) + nonNegative(context.pedras);
+    custoBase = baseCalculo * pct(preco) * quantidade;
+  } else if (metodoCusto === "percentual_custo_direto") {
+    baseCalculo = nonNegative(context.custoDireto);
+    custoBase = baseCalculo * pct(preco) * quantidade;
+  } else if (metodoCusto === "por_grama_metal") {
+    baseCalculo = nonNegative(context.pesoMetalGramas);
+    custoBase = baseCalculo * preco * quantidade;
+  }
+
+  const custo = custoBase * (1 + perda);
   return {
     itemId: component.itemId || "",
     nome: component.nome || item.nome || item.descricao || "Componente",
     quantidade: round(quantidade, 6),
     precoUnitario: round(preco, 6),
+    metodoCusto,
+    baseCalculo: round(baseCalculo, 6),
     perdaPercentual: round((component.perdaPercentual ?? item.perdaPercentual) || 0, 4),
     custo: round(custo, 6)
   };
@@ -92,22 +109,25 @@ export function calculatePricing({ sheet = {}, catalogs = {}, settings = {}, com
     valorRecuperavelPorGrama: material.valorRecuperavelPorGrama ?? material.custoPorGrama ?? 0
   });
 
-  const groups = [
-    ["pedras", catalogs.pedras || {}],
-    ["insumos", catalogs.insumos || {}],
-    ["processos", catalogs.processos || {}],
-    ["acabamentos", catalogs.acabamentos || {}],
-    ["embalagens", catalogs.embalagens || {}]
-  ];
-
   const lines = {};
-  let componentsTotal = 0;
-  groups.forEach(([group, catalog]) => {
-    lines[group] = (sheet[group] || []).map((item) => calculateComponentCost(item, catalog));
-    const subtotal = lines[group].reduce((sum, item) => sum + item.custo, 0);
-    componentsTotal += subtotal;
-    lines[`${group}Subtotal`] = round(subtotal, 6);
+  const calculateGroup = (group, catalog, context = {}) => {
+    lines[group] = (sheet[group] || []).map((item) => calculateComponentCost(item, catalog, context));
+    lines[`${group}Subtotal`] = round(lines[group].reduce((sum, item) => sum + item.custo, 0), 6);
+    return lines[`${group}Subtotal`];
+  };
+
+  const pedrasSubtotal = calculateGroup("pedras", catalogs.pedras || {});
+  const insumosSubtotal = calculateGroup("insumos", catalogs.insumos || {});
+  const processosSubtotal = calculateGroup("processos", catalogs.processos || {});
+  const custoDiretoAntesAcabamento = metal.custoLiquido + pedrasSubtotal + insumosSubtotal + processosSubtotal;
+  const acabamentosSubtotal = calculateGroup("acabamentos", catalogs.acabamentos || {}, {
+    metal: metal.custoLiquido,
+    pedras: pedrasSubtotal,
+    custoDireto: custoDiretoAntesAcabamento,
+    pesoMetalGramas: sheet.pesoMetalGramas ?? sheet.pesoFinalGramas ?? 0
   });
+  const embalagensSubtotal = calculateGroup("embalagens", catalogs.embalagens || {});
+  const componentsTotal = pedrasSubtotal + insumosSubtotal + processosSubtotal + acabamentosSubtotal + embalagensSubtotal;
 
   const maoDeObraDireta = nonNegative(sheet.maoDeObraDireta);
   const terceirizacoes = nonNegative(sheet.terceirizacoes);
@@ -147,7 +167,7 @@ export function calculatePricing({ sheet = {}, catalogs = {}, settings = {}, com
   const pontoEquilibrioUnidades = contribuicaoUnitaria > 0 ? nonNegative(settings.custoOperacionalMensal) / contribuicaoUnitaria : 0;
 
   return {
-    engineVersion: "1.0.0",
+    engineVersion: "1.1.0",
     metal,
     lines,
     operational,

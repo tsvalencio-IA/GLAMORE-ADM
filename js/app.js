@@ -22,6 +22,7 @@ const NAV = [
   ["products", "Produtos existentes", "◇"],
   ["sheets", "Fichas técnicas", "▤"],
   ["calculator", "Calcular custos", "∑"],
+  ["batch", "Automação em lote", "▦"],
   ["catalogs", "Materiais e componentes", "◫"],
   ["operations", "Custos operacionais", "⚙"],
   ["pricing", "Precificações", "R$"],
@@ -35,7 +36,7 @@ const NAV = [
 const ROUTE_TITLES = Object.fromEntries(NAV.map(([id, label]) => [id, label]));
 
 function can(name) {
-  return Repository.permission(state.profile, state.gestor, name);
+  return Repository.permission(state.profile, state.gestor, state.access, name);
 }
 
 function currentUserName() {
@@ -105,9 +106,9 @@ function renderNav() {
   mainNav.innerHTML = NAV.filter(([id]) => {
     if (id === "access") return can("administrar");
     if (id === "approvals") return can("aprovar") || can("publicar");
-    if (id === "calculator") return can("calcular");
+    if (id === "calculator" || id === "batch") return can("calcular");
     if (id === "imports") return can("importar") || can("editarFicha");
-    if (id === "pricing" || id === "reports") return can("visualizarMargem") || can("calcular") || can("aprovar") || can("publicar");
+    if (id === "pricing" || id === "reports") return can("visualizarMargem") || can("calcular") || can("aprovar") || can("publicar") || can("exportar");
     if (id === "backup") return can("administrar") || can("exportar");
     return true;
   }).map(([id, label, icon]) => `<button class="nav-item ${state.route === id ? "active" : ""}" data-route="${id}"><span>${icon}</span>${label}</button>`).join("");
@@ -119,7 +120,8 @@ async function loadData({ initialize = false } = {}) {
   const data = await Repository.loadBootstrap(state.user);
   state.profile = data.profile || {};
   state.gestor = data.gestor;
-  if (!Repository.canAccess(state.profile, state.gestor)) {
+  state.access = data.access || {};
+  if (!Repository.canAccess(state.profile, state.gestor, state.access)) {
     loginView.hidden = false;
     appView.hidden = true;
     document.getElementById("loginError").hidden = false;
@@ -128,7 +130,7 @@ async function loadData({ initialize = false } = {}) {
     return;
   }
   state.data = {
-    produtos: data.produtos || {}, usuarios: data.usuarios || {}, settings: data.settings || {},
+    produtos: data.produtos || {}, usuarios: data.usuarios || {}, acessos: data.acessos || {}, settings: data.settings || {},
     materiais: data.materiais || {}, pedras: data.pedras || {}, insumos: data.insumos || {}, processos: data.processos || {},
     acabamentos: data.acabamentos || {}, embalagens: data.embalagens || {}, custosOperacionais: data.custosOperacionais || {},
     fichas: data.fichas || {}, precificacoes: data.precificacoes || {}, publicados: data.publicados || {}
@@ -335,7 +337,7 @@ function renderCalculator() {
   state.editor.sheetId = selected;
   const defaults = commercialDefaults();
   pageContent.innerHTML = `
-    <section class="panel"><div class="panel-head"><div><p class="eyebrow">MOTOR 1.0.0</p><h3>Cálculo auditável</h3><p class="muted">O resultado é uma simulação até ser salvo, revisado e aprovado.</p></div></div>
+    <section class="panel"><div class="panel-head"><div><p class="eyebrow">MOTOR 1.1.0</p><h3>Cálculo auditável</h3><p class="muted">O resultado é uma simulação até ser salvo, revisado e aprovado.</p></div></div>
     ${sheets.length ? `<form id="calculatorForm" class="stack-lg">
       <div class="form-grid three"><label>Ficha técnica<select name="sheetId">${sheets.map((f) => `<option value="${f.id}" ${selected === f.id ? "selected" : ""}>${escapeHtml(`${f.produtoSnapshot?.codigo || f.produtoId} · v${f.versao}`)}</option>`).join("")}</select></label><label>Método de preço<select name="metodoPreco"><option value="multiplicador">Custo × multiplicador</option><option value="margem_desejada">Margem líquida desejada</option></select></label><label>Moeda<select name="moeda"><option value="BRL">Real (BRL)</option><option value="USD">Dólar (USD)</option></select></label></div>
       <div class="form-grid four"><label>Multiplicador<input name="multiplicador" type="number" min="0" step="0.01" value="${defaults.multiplicador}" /></label><label>Margem desejada (%)<input name="margemDesejadaPercentual" type="number" min="0" max="99" step="0.01" value="${defaults.margemDesejadaPercentual}" /></label><label>Impostos (%)<input name="impostoPercentual" type="number" min="0" max="100" step="0.01" value="${defaults.impostoPercentual}" /></label><label>Comissão (%)<input name="comissaoPercentual" type="number" min="0" max="100" step="0.01" value="${defaults.comissaoPercentual}" /></label></div>
@@ -391,12 +393,65 @@ async function saveCurrentPricing() {
   } catch (error) { showToast(error.message, "error"); }
 }
 
+
+function renderBatchAutomation(){
+  const sheets=objectEntries(state.data.fichas).filter(f=>f.status!=="arquivado").sort((a,b)=>String(a.produtoSnapshot?.codigo||a.produtoId).localeCompare(String(b.produtoSnapshot?.codigo||b.produtoId)));
+  const d=commercialDefaults();
+  pageContent.innerHTML=`<section class="panel"><div class="panel-head wrap"><div><p class="eyebrow">FLUXO DA PLANILHA AUTOMATIZADO</p><h3>Precificação e projeção de todos os códigos</h3><p class="muted">Reproduz o raciocínio da planilha: insumos, capacidade mensal, custo fixo por peça, custo final, preço sugerido, despesas comerciais e resultado mensal. Nenhum dado é gravado até uma confirmação explícita.</p></div></div>${sheets.length?`<form id="batchForm" class="stack-lg"><div class="form-grid four"><label>Método de preço<select name="metodoPreco"><option value="multiplicador">Custo × multiplicador</option><option value="margem_desejada">Margem líquida desejada</option></select></label><label>Multiplicador sugerido<input name="multiplicador" type="number" min="0" step="0.01" value="${d.multiplicador}"/></label><label>Margem desejada (%)<input name="margemDesejadaPercentual" type="number" min="0" max="99" step="0.01" value="${d.margemDesejadaPercentual}"/></label><label>Moeda<select name="moeda"><option value="BRL">Real (BRL)</option><option value="USD">Dólar (USD)</option></select></label></div><div class="form-grid four"><label>Impostos (%)<input name="impostoPercentual" type="number" min="0" max="100" step="0.01" value="${d.impostoPercentual}"/></label><label>Comissão (%)<input name="comissaoPercentual" type="number" min="0" max="100" step="0.01" value="${d.comissaoPercentual}"/></label><label>Cartão (%)<input name="cartaoPercentual" type="number" min="0" max="100" step="0.01" value="${d.cartaoPercentual}"/></label><label>Utilização da capacidade (%)<input name="utilizacaoCapacidadePercentual" type="number" min="0" max="100" step="0.01" value="${d.utilizacaoCapacidadePercentual}"/></label></div><div class="form-grid two"><label>Conversão em vendas (%)<input name="conversaoVendaPercentual" type="number" min="0" max="100" step="0.01" value="${d.conversaoVendaPercentual}"/></label><div class="calculation-preview"><span>Fichas disponíveis para automação</span><strong>${sheets.length}</strong></div></div><div class="actions-row"><button class="btn btn-primary" type="submit">Recalcular todos os códigos</button></div></form><div id="batchResult"></div>`:emptyState("Nenhuma ficha técnica","Importe ou crie fichas técnicas para automatizar a planilha.",'<button class="btn btn-primary" data-route="imports">Importar PDF</button>')}</section>`;
+  bindCommonActions();
+  const form=document.getElementById("batchForm");
+  if(form){form.metodoPreco.value="multiplicador";form.moeda.value=d.moeda||"BRL";form.addEventListener("submit",event=>{event.preventDefault();runBatchAutomation(event.currentTarget);});runBatchAutomation(form);}
+}
+
+function batchCommercial(form){
+  const raw=getFormObject(form);
+  return {metodoPreco:raw.metodoPreco,moeda:raw.moeda,multiplicador:toNumber(raw.multiplicador),margemDesejadaPercentual:toNumber(raw.margemDesejadaPercentual),impostoPercentual:toNumber(raw.impostoPercentual),comissaoPercentual:toNumber(raw.comissaoPercentual),cartaoPercentual:toNumber(raw.cartaoPercentual),utilizacaoCapacidadePercentual:toNumber(raw.utilizacaoCapacidadePercentual),conversaoVendaPercentual:toNumber(raw.conversaoVendaPercentual)};
+}
+
+function runBatchAutomation(form){
+  const commercial=batchCommercial(form);
+  const rows=objectEntries(state.data.fichas).filter(f=>f.status!=="arquivado").map(sheet=>{
+    const warnings=[];
+    if(!sheet.materialId)warnings.push("material");
+    if(toNumber(sheet.pesoMetalGramas)<=0)warnings.push("peso");
+    if(toNumber(sheet.capacidadeMensal)<=0)warnings.push("capacidade");
+    const result=calculatePricing({sheet,catalogs:catalogs(),settings:settingsMerged(),commercial});
+    return {id:sheet.id,sheet,commercial:deepClone(commercial),result,complete:warnings.length===0,warnings,selected:warnings.length===0};
+  }).sort((a,b)=>String(a.sheet.produtoSnapshot?.codigo||a.sheet.produtoId).localeCompare(String(b.sheet.produtoSnapshot?.codigo||b.sheet.produtoId)));
+  state.editor.batchResults=rows;
+  renderBatchResults();
+}
+
+function renderBatchResults(){
+  const host=document.getElementById("batchResult");if(!host)return;
+  const rows=state.editor.batchResults||[];const complete=rows.filter(r=>r.complete);const incomplete=rows.length-complete.length;
+  const totalGross=complete.reduce((sum,r)=>sum+toNumber(r.result.projecao.receitaBruta),0);const totalNet=complete.reduce((sum,r)=>sum+toNumber(r.result.projecao.lucroLiquido),0);const currency=rows[0]?.commercial?.moeda||"BRL";
+  host.innerHTML=`<div class="result-block"><section class="metrics-grid">${metricCard("Códigos calculados",complete.length,`${incomplete} com pendências`,incomplete?"warning":"success")}${metricCard("Receita bruta projetada",money(totalGross,currency),"Soma das projeções")}${metricCard("Resultado líquido projetado",money(totalNet,currency),"Soma dos lucros líquidos",totalNet>=0?"success":"danger")}${metricCard("Custo operacional mensal",money(settingsMerged().custoOperacionalMensal||0,currency),`Rateio: ${settingsMerged().metodoRateio||"capacidade_global"}`)}</section><section class="panel inset batch-panel"><div class="panel-head wrap"><div><h4>Planilha automatizada</h4><p class="muted">Valores calculados com as fichas e catálogos atuais. Linhas incompletas não podem ser salvas.</p></div><div class="inline-actions"><button class="btn btn-secondary" id="batchSelectAll">Selecionar completos</button><button class="btn btn-secondary" id="batchExportCsv">Exportar CSV</button><button class="btn btn-primary" id="batchSaveDrafts">Salvar selecionados como rascunho</button></div></div><div class="table-wrap batch-table"><table><thead><tr><th>Usar</th><th>Código / descrição</th><th>Metal</th><th>Pedras</th><th>Outros insumos</th><th>Acabamento</th><th>Produção/mês</th><th>Custo fixo/peça</th><th>Custo final</th><th>Preço sugerido</th><th>Despesas de venda</th><th>Lucro unitário</th><th>Receita mensal</th><th>Resultado mensal</th></tr></thead><tbody>${rows.map((row,i)=>{const r=row.result;const s=row.sheet;const p=state.data.produtos[s.produtoId]||s.produtoSnapshot||{};const others=toNumber(r.custos.insumos)+toNumber(r.custos.processos)+toNumber(r.custos.embalagens)+toNumber(r.custos.maoDeObraDireta)+toNumber(r.custos.terceirizacoes)+toNumber(r.custos.preparacaoLoteUnitario)+toNumber(r.custos.outrosCustos);return `<tr class="${row.complete?"":"batch-incomplete"}"><td><input type="checkbox" data-batch-select="${i}" ${row.selected?"checked":""} ${row.complete?"":"disabled"}/></td><td><strong>${escapeHtml(p.codigo||s.produtoSnapshot?.codigo||s.produtoId)}</strong><small class="block-muted">${escapeHtml(p.descricao||s.produtoSnapshot?.descricao||"")}</small>${row.complete?"":`<small class="block-muted warning-text">Falta: ${escapeHtml(row.warnings.join(", "))}</small>`}</td><td>${money(r.custos.metal,currency)}</td><td>${money(r.custos.pedras,currency)}</td><td>${money(others,currency)}</td><td>${money(r.custos.acabamentos,currency)}</td><td>${numberBr(s.capacidadeMensal||0,0)}</td><td>${money(r.custos.operacional,currency)}</td><td><strong>${money(r.custos.totalUnitario,currency)}</strong></td><td><strong>${money(r.comercial.precoVenda,currency)}</strong></td><td>${money(r.comercial.despesasComerciais,currency)}</td><td>${money(r.comercial.lucroLiquidoUnitario,currency)}<small class="block-muted">${numberBr(r.comercial.margemLiquidaPercentual,2)}%</small></td><td>${money(r.projecao.receitaBruta,currency)}</td><td><strong>${money(r.projecao.lucroLiquido,currency)}</strong></td></tr>`}).join("")}</tbody></table></div></section></div>`;
+  document.querySelectorAll("[data-batch-select]").forEach(input=>input.addEventListener("change",()=>{const row=state.editor.batchResults[Number(input.dataset.batchSelect)];if(row)row.selected=input.checked;}));
+  document.getElementById("batchSelectAll")?.addEventListener("click",()=>{state.editor.batchResults.forEach(r=>r.selected=r.complete);renderBatchResults();});
+  document.getElementById("batchExportCsv")?.addEventListener("click",exportBatchCsv);
+  document.getElementById("batchSaveDrafts")?.addEventListener("click",saveBatchDrafts);
+}
+
+function exportBatchCsv(){
+  const rows=state.editor.batchResults||[];const header=["produtoId","codigo","descricao","metal","pedras","insumosProcessos","acabamentos","capacidadeMensal","custoOperacionalUnitario","custoFinal","precoSugerido","despesasVenda","lucroUnitario","margemLiquidaPercentual","receitaMensalProjetada","resultadoMensalProjetado","pendencias"];
+  const lines=[header.map(csvCell).join(";")];rows.forEach(row=>{const r=row.result,s=row.sheet,p=state.data.produtos[s.produtoId]||s.produtoSnapshot||{};const others=toNumber(r.custos.insumos)+toNumber(r.custos.processos)+toNumber(r.custos.embalagens)+toNumber(r.custos.maoDeObraDireta)+toNumber(r.custos.terceirizacoes)+toNumber(r.custos.preparacaoLoteUnitario)+toNumber(r.custos.outrosCustos);lines.push([s.produtoId,p.codigo||s.produtoSnapshot?.codigo,p.descricao||s.produtoSnapshot?.descricao,r.custos.metal,r.custos.pedras,others,r.custos.acabamentos,s.capacidadeMensal,r.custos.operacional,r.custos.totalUnitario,r.comercial.precoVenda,r.comercial.despesasComerciais,r.comercial.lucroLiquidoUnitario,r.comercial.margemLiquidaPercentual,r.projecao.receitaBruta,r.projecao.lucroLiquido,row.warnings.join(",")].map(csvCell).join(";"));});downloadText(`glamore-planilha-automatizada-${new Date().toISOString().slice(0,10)}.csv`,lines.join("\n"),"text/csv");
+}
+
+async function saveBatchDrafts(){
+  if(!can("calcular"))return showToast("Sua conta não pode salvar precificações.","error");
+  const selected=(state.editor.batchResults||[]).filter(r=>r.selected&&r.complete);if(!selected.length)return showToast("Selecione ao menos uma linha completa.","error");
+  if(!confirmAction(`Salvar ${selected.length} precificação(ões) como rascunho? Nenhum preço será publicado e nenhum estoque será movimentado.`))return;
+  const batchId=uid("lote");let savedCount=0;
+  try{for(const row of selected){const payload={produtoId:row.sheet.produtoId,fichaId:row.sheet.id,fichaVersao:row.sheet.versao,produtoSnapshot:deepClone(row.sheet.produtoSnapshot),fichaSnapshot:deepClone(row.sheet),catalogosSnapshot:deepClone(catalogs()),configuracoesSnapshot:deepClone(settingsMerged()),comercial:deepClone(row.commercial),resultado:deepClone(row.result),origemCalculo:"automacao_lote",loteCalculoId:batchId,status:"rascunho"};const saved=await Repository.savePricing(payload,state.profile,state.user);state.data.precificacoes[saved.id]=saved;savedCount++;}showToast(`${savedCount} precificação(ões) salvas como rascunho.`,"success");setRoute("pricing");}catch(error){showToast(`Foram salvas ${savedCount}. Erro: ${error.message}`,"error");}
+}
+
 const CATALOG_META = {
   materiais: { title: "Metais e materiais", fields: [["nome","Nome","text"],["custoPorGrama","Custo por grama","number"],["perdaPercentual","Perda padrão (%)","number"],["recuperacaoPercentual","Recuperação (%)","number"],["valorRecuperavelPorGrama","Valor recuperável/g","number"],["fornecedor","Fornecedor","text"]], price: "custoPorGrama" },
   pedras: { title: "Pedras", fields: [["nome","Nome completo","text"],["material","Material","text"],["formato","Formato","text"],["tamanho","Tamanho","text"],["cor","Cor/variedade","text"],["unidade","Unidade de compra","text"],["precoUnitario","Preço unitário convertido","number"],["moedaOrigem","Moeda de origem","text"],["precoOrigem","Preço de origem","number"],["cotacao","Cotação utilizada","number"],["fornecedor","Fornecedor","text"]], price: "precoUnitario" },
   insumos: { title: "Insumos", fields: [["nome","Nome","text"],["unidade","Unidade","text"],["precoUnitario","Preço unitário","number"],["perdaPercentual","Perda (%)","number"],["fornecedor","Fornecedor","text"]], price: "precoUnitario" },
   processos: { title: "Processos", fields: [["nome","Nome","text"],["unidade","Unidade (min/un)","text"],["precoUnitario","Custo unitário","number"],["centroCusto","Centro de custo","text"]], price: "precoUnitario" },
-  acabamentos: { title: "Acabamentos e banhos", fields: [["nome","Nome","text"],["unidade","Unidade","text"],["precoUnitario","Preço unitário","number"],["fornecedor","Fornecedor","text"]], price: "precoUnitario" },
+  acabamentos: { title: "Acabamentos e banhos", fields: [["nome","Nome","text"],["unidade","Unidade","text"],["metodoCusto","Forma de cálculo","select",[["unitario","Valor por unidade"],["percentual_metal_pedras","% sobre metal + pedras"],["percentual_custo_direto","% sobre custo direto"],["por_grama_metal","Valor por grama do metal"]]],["precoUnitario","Valor ou percentual","number"],["fornecedor","Fornecedor","text"]], price: "precoUnitario" },
   embalagens: { title: "Embalagens", fields: [["nome","Nome","text"],["unidade","Unidade","text"],["precoUnitario","Preço unitário","number"],["fornecedor","Fornecedor","text"]], price: "precoUnitario" }
 };
 
@@ -406,10 +461,15 @@ function renderCatalogs() {
   drawCatalog(Object.keys(CATALOG_META)[0]);
 }
 
+function catalogValue(item, meta) {
+  if (item.metodoCusto === "percentual_metal_pedras" || item.metodoCusto === "percentual_custo_direto") return `${numberBr(item[meta.price] || 0, 4)}%`;
+  return money(item[meta.price] || 0, item.moeda || "BRL");
+}
+
 function drawCatalog(group) {
   const meta = CATALOG_META[group];
   const items = objectEntries(state.data[group]).sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
-  document.getElementById("catalogContent").innerHTML = `<div class="panel-head compact"><div><h4>${meta.title}</h4><p>${items.filter(x=>x.ativo!==false).length} ativos</p></div><button class="btn btn-primary" data-new-catalog="${group}">Novo cadastro</button></div>${items.length ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Valor atual</th><th>Versão</th><th>Status</th><th></th></tr></thead><tbody>${items.map((item) => `<tr><td><strong>${escapeHtml(item.nome || item.id)}</strong><small class="block-muted">${escapeHtml([item.material,item.formato,item.tamanho,item.fornecedor].filter(Boolean).join(" · "))}</small></td><td>${money(item[meta.price] || 0, item.moeda || "BRL")}</td><td>v${item.versao || 1}</td><td>${item.ativo === false ? '<span class="badge badge-arquivado">Arquivado</span>' : '<span class="badge badge-success">Ativo</span>'}</td><td><button class="btn btn-small btn-secondary" data-edit-catalog="${group}:${item.id}">Editar</button></td></tr>`).join("")}</tbody></table></div>` : emptyState("Nenhum cadastro", `Cadastre o primeiro item de ${meta.title.toLowerCase()}.`)}`;
+  document.getElementById("catalogContent").innerHTML = `<div class="panel-head compact"><div><h4>${meta.title}</h4><p>${items.filter(x=>x.ativo!==false).length} ativos</p></div><button class="btn btn-primary" data-new-catalog="${group}">Novo cadastro</button></div>${items.length ? `<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Valor atual</th><th>Versão</th><th>Status</th><th></th></tr></thead><tbody>${items.map((item) => `<tr><td><strong>${escapeHtml(item.nome || item.id)}</strong><small class="block-muted">${escapeHtml([item.material,item.formato,item.tamanho,item.fornecedor].filter(Boolean).join(" · "))}</small></td><td>${catalogValue(item, meta)}</td><td>v${item.versao || 1}</td><td>${item.ativo === false ? '<span class="badge badge-arquivado">Arquivado</span>' : '<span class="badge badge-success">Ativo</span>'}</td><td><button class="btn btn-small btn-secondary" data-edit-catalog="${group}:${item.id}">Editar</button></td></tr>`).join("")}</tbody></table></div>` : emptyState("Nenhum cadastro", `Cadastre o primeiro item de ${meta.title.toLowerCase()}.`)}`;
   document.querySelector(`[data-new-catalog="${group}"]`)?.addEventListener("click", () => openCatalogEditor(group));
   document.querySelectorAll("[data-edit-catalog]").forEach((button) => button.addEventListener("click", () => { const [g,id]=button.dataset.editCatalog.split(":"); openCatalogEditor(g,id); }));
 }
@@ -417,7 +477,7 @@ function drawCatalog(group) {
 function openCatalogEditor(group, id = null) {
   if (!can("editarCatalogos")) return showToast("Sua conta não pode editar catálogos.", "error");
   const meta = CATALOG_META[group]; const item = id ? state.data[group][id] : {};
-  openModal(`${id ? "Editar" : "Novo"} · ${meta.title}`, `<form id="catalogForm" class="modal-form"><input type="hidden" name="group" value="${group}"/><input type="hidden" name="id" value="${escapeHtml(id || "")}"/><div class="form-grid two">${meta.fields.map(([name,label,type]) => `<label>${label}<input name="${name}" type="${type}" ${type==="number"?'min="0" step="0.0001"':''} value="${escapeHtml(item?.[name] ?? "")}" ${name==="nome"?"required":""}/></label>`).join("")}</div><label class="checkbox"><input name="ativo" type="checkbox" ${item?.ativo !== false ? "checked" : ""}/> Cadastro ativo</label><div class="modal-actions"><button type="button" class="btn btn-ghost" data-close-modal>Cancelar</button>${id && item?.ativo !== false ? '<button type="button" class="btn btn-danger" id="archiveCatalogBtn">Arquivar</button>' : ""}<button class="btn btn-primary" type="submit">Salvar nova versão</button></div></form>`);
+  openModal(`${id ? "Editar" : "Novo"} · ${meta.title}`, `<form id="catalogForm" class="modal-form"><input type="hidden" name="group" value="${group}"/><input type="hidden" name="id" value="${escapeHtml(id || "")}"/><div class="form-grid two">${meta.fields.map(([name,label,type,options]) => type==="select" ? `<label>${label}<select name="${name}">${(options||[]).map(([value,text])=>`<option value="${value}" ${String(item?.[name]||"unitario")===value?"selected":""}>${text}</option>`).join("")}</select></label>` : `<label>${label}<input name="${name}" type="${type}" ${type==="number"?'min="0" step="0.0001"':''} value="${escapeHtml(item?.[name] ?? "")}" ${name==="nome"?"required":""}/></label>`).join("")}</div><label class="checkbox"><input name="ativo" type="checkbox" ${item?.ativo !== false ? "checked" : ""}/> Cadastro ativo</label><div class="modal-actions"><button type="button" class="btn btn-ghost" data-close-modal>Cancelar</button>${id && item?.ativo !== false ? '<button type="button" class="btn btn-danger" id="archiveCatalogBtn">Arquivar</button>' : ""}<button class="btn btn-primary" type="submit">Salvar nova versão</button></div></form>`);
   document.getElementById("catalogForm").addEventListener("submit", async (event) => {
     event.preventDefault(); const raw = getFormObject(event.currentTarget); const data = {};
     meta.fields.forEach(([name,,type]) => { data[name] = type === "number" ? toNumber(raw[name]) : raw[name] || ""; }); data.ativo = event.currentTarget.ativo.checked;
@@ -508,20 +568,31 @@ function renderReports(){
 
 const PERMISSIONS=["acessar","editarFicha","editarCatalogos","editarCustos","calcular","visualizarMargem","aprovar","publicar","importar","exportar","visualizarAuditoria","administrar"];
 function renderAccess(){
-  if(!can("administrar"))return setRoute("dashboard");const users=objectEntries(state.data.usuarios);
-  pageContent.innerHTML=`<section class="panel"><div class="panel-head"><div><p class="eyebrow">CONTROLE DE ACESSO</p><h3>Permissões do módulo</h3><p class="muted">Não altera o papel do usuário no sistema operacional.</p></div></div><div class="access-list">${users.map(u=>`<article class="access-card"><div><strong>${escapeHtml(u.nome||u.email)}</strong><span>${escapeHtml(u.email||"")} · ${escapeHtml(u.papel||"")}</span></div><div class="permission-grid">${PERMISSIONS.map(p=>`<label><input type="checkbox" data-permission="${u.id}:${p}" ${(["dono"].includes(u.papel)||u.permissoesPrecificacao?.[p])?"checked":""} ${u.papel==="dono"?"disabled":""}/>${p}</label>`).join("")}</div><button class="btn btn-secondary" data-save-permissions="${u.id}" ${u.papel==="dono"?"disabled":""}>Salvar permissões</button></article>`).join("")}</div></section>`;
-  document.querySelectorAll("[data-save-permissions]").forEach(b=>b.addEventListener("click",async()=>{const userId=b.dataset.savePermissions;const permissions={};PERMISSIONS.forEach(p=>permissions[p]=document.querySelector(`[data-permission="${userId}:${p}"]`).checked);try{await Repository.updateUserPermission(userId,permissions,state.profile,state.user);state.data.usuarios[userId].permissoesPrecificacao=permissions;showToast("Permissões atualizadas.","success");}catch(error){showToast(error.message,"error");}}));
+  if(!can("administrar"))return setRoute("dashboard");
+  const users=objectEntries(state.data.usuarios).sort((a,b)=>String(a.nome||a.email).localeCompare(String(b.nome||b.email)));
+  const accesses=state.data.acessos||{};
+  pageContent.innerHTML=`<section class="panel"><div class="panel-head"><div><p class="eyebrow">CONTROLE DE ACESSO ISOLADO</p><h3>Permissões do módulo</h3><p class="muted">As permissões ficam em <code>precificacao/acessos</code>. O papel e o cadastro do sistema de estoque não são alterados.</p></div></div>${users.length?`<div class="access-list">${users.map(u=>{const access=accesses[u.id]||{};const owner=String(u.papel||"").toLowerCase()==="dono";return `<article class="access-card"><div><strong>${escapeHtml(u.nome||u.email)}</strong><span>${escapeHtml(u.email||"")} · ${escapeHtml(u.papel||"")}</span></div><div class="permission-grid">${PERMISSIONS.map(p=>`<label><input type="checkbox" data-permission="${u.id}:${p}" ${(owner||access?.[p])?"checked":""} ${owner?"disabled":""}/>${p}</label>`).join("")}</div><button class="btn btn-secondary" data-save-permissions="${u.id}" ${owner?"disabled":""}>Salvar permissões isoladas</button></article>`}).join("")}</div>`:emptyState("Nenhum usuário disponível","Somente o proprietário ou gestor global pode carregar e administrar a lista de usuários.")}</section>`;
+  document.querySelectorAll("[data-save-permissions]").forEach(b=>b.addEventListener("click",async()=>{
+    const userId=b.dataset.savePermissions;
+    const permissions={};
+    PERMISSIONS.forEach(p=>permissions[p]=document.querySelector(`[data-permission="${userId}:${p}"]`).checked);
+    try{
+      const saved=await Repository.updateUserPermission(userId,permissions,state.profile,state.user);
+      state.data.acessos[userId]=saved;
+      showToast("Permissões isoladas atualizadas.","success");
+    }catch(error){showToast(error.message,"error");}
+  }));
 }
 
 function renderBackup(){
-  pageContent.innerHTML=`<section class="two-column"><article class="panel"><p class="eyebrow">EXPORTAR</p><h3>Backup exclusivo do módulo</h3><p>Inclui configurações, catálogos, fichas, cálculos, aprovações, preços publicados e histórico do novo nó.</p><div class="alert alert-info">Não inclui produtos, peças físicas, vendas, estoque ou movimentos do sistema atual.</div><button class="btn btn-primary" id="downloadBackupBtn">Gerar backup JSON</button></article><article class="panel"><p class="eyebrow">RESTAURAR</p><h3>Restaurar backup do módulo</h3><p>A restauração aceita somente chaves autorizadas dentro de <code>precificacao</code>.</p>${can("publicar") ? '<input id="restoreFile" type="file" accept="application/json"/><button class="btn btn-danger" id="restoreBackupBtn">Restaurar com confirmação</button>' : '<div class="alert alert-info">A restauração exige permissão de publicação para impedir a substituição indireta de preços aprovados.</div>'}</article></section><section class="panel"><h3>Barreira de segurança</h3><div class="security-grid"><div><b>✓</b><span>Não há caminho de escrita para estoque.</span></div><div><b>✓</b><span>Não há caminho de escrita para vendas.</span></div><div><b>✓</b><span>Backups não contêm dados operacionais.</span></div><div><b>✓</b><span>Publicação permanece no novo nó.</span></div></div></section>`;
+  pageContent.innerHTML=`<section class="two-column"><article class="panel"><p class="eyebrow">EXPORTAR</p><h3>Backup exclusivo do módulo</h3><p>Inclui configurações, catálogos, fichas, cálculos, aprovações, preços publicados e histórico do novo nó.</p><div class="alert alert-info">Não inclui produtos, peças físicas, vendas, estoque ou movimentos do sistema atual.</div><button class="btn btn-primary" id="downloadBackupBtn">Gerar backup JSON</button></article><article class="panel"><p class="eyebrow">RESTAURAR</p><h3>Restaurar backup do módulo</h3><p>A restauração aceita somente chaves autorizadas dentro de <code>precificacao</code>.</p>${can("administrar") ? '<input id="restoreFile" type="file" accept="application/json"/><button class="btn btn-danger" id="restoreBackupBtn">Restaurar com confirmação</button>' : '<div class="alert alert-info">A restauração exige a permissão administrar.</div>'}</article></section><section class="panel"><h3>Barreira de segurança</h3><div class="security-grid"><div><b>✓</b><span>Não há caminho de escrita para estoque.</span></div><div><b>✓</b><span>Não há caminho de escrita para vendas.</span></div><div><b>✓</b><span>Backups não contêm dados operacionais.</span></div><div><b>✓</b><span>Publicação permanece no novo nó.</span></div></div></section>`;
   document.getElementById("downloadBackupBtn").addEventListener("click",async()=>{try{const data=await Repository.exportModule();downloadText(`glamore-precificacao-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2));showToast("Backup gerado.","success");}catch(error){showToast(error.message,"error");}});
   document.getElementById("restoreBackupBtn")?.addEventListener("click",async()=>{if(!can("administrar"))return showToast("Sem permissão.","error");const file=document.getElementById("restoreFile").files[0];if(!file)return showToast("Selecione um arquivo JSON.","error");if(!confirmAction("A restauração substituirá dados do módulo de precificação. O sistema operacional não será alterado. Continuar?"))return;try{const data=JSON.parse(await file.text());await Repository.restoreModule(data,state.profile,state.user);showToast("Backup restaurado.","success");await loadData();}catch(error){showToast(error.message,"error");}});
 }
 
 function renderRoute(){
   if(!state.loaded)return;pageTitle.textContent=ROUTE_TITLES[state.route]||"Painel";pageEyebrow.textContent=`GLAMORE · ${APP_CONFIG.app.versao}`;
-  const renders={dashboard:renderDashboard,products:renderProducts,sheets:renderSheets,calculator:renderCalculator,catalogs:renderCatalogs,operations:renderOperations,pricing:renderPricing,approvals:renderApprovals,imports:renderImports,reports:renderReports,access:renderAccess,backup:renderBackup};(renders[state.route]||renderDashboard)();
+  const renders={dashboard:renderDashboard,products:renderProducts,sheets:renderSheets,calculator:renderCalculator,batch:renderBatchAutomation,catalogs:renderCatalogs,operations:renderOperations,pricing:renderPricing,approvals:renderApprovals,imports:renderImports,reports:renderReports,access:renderAccess,backup:renderBackup};(renders[state.route]||renderDashboard)();
 }
 
 function openModal(title, body, size=""){
@@ -549,7 +620,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 
 Firebase.onAuth(async(user)=>{
   state.user=user;
-  if(!user){state.loaded=false;state.profile=null;state.gestor=false;loginView.hidden=false;appView.hidden=true;pageContent.innerHTML="";return;}
+  if(!user){state.loaded=false;state.profile=null;state.gestor=false;state.access={};loginView.hidden=false;appView.hidden=true;pageContent.innerHTML="";return;}
   loginView.hidden=true;appView.hidden=false;state.route=location.hash.replace(/^#\//,"")||"dashboard";
   try{await loadData();}catch(error){console.error(error);showToast(`Falha ao carregar: ${error.message}`,"error");document.getElementById("connectionBadge").className="badge badge-danger";document.getElementById("connectionBadge").textContent="Erro de conexão";}
 });

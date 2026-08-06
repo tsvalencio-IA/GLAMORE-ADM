@@ -9,6 +9,7 @@ export const paths = Object.freeze({
   root: ROOT,
   produtos: APP_CONFIG.paths.produtos,
   usuarios: APP_CONFIG.paths.usuarios,
+  acessos: `${ROOT}/acessos`,
   settings: `${ROOT}/configuracoes/geral`,
   materiais: `${ROOT}/materiais`,
   pedras: `${ROOT}/pedras`,
@@ -38,9 +39,18 @@ function actor(profile = {}, user = {}) {
 
 export const Repository = {
   async loadBootstrap(user) {
-    const [profile, gestor, produtos, settings, materiais, pedras, insumos, processos, acabamentos, embalagens, custosOperacionais, fichas, precificacoes, publicados, usuarios] = await Promise.all([
+    const [profile, gestorRaw] = await Promise.all([
       Firebase.get(`${paths.usuarios}/${user.uid}`, {}),
-      Firebase.get(`gestores/${user.uid}`, false),
+      Firebase.get(`gestores/${user.uid}`, false)
+    ]);
+    const gestor = gestorRaw === true;
+    const access = await Firebase.get(`${paths.acessos}/${user.uid}`, {});
+    if (!this.canAccess(profile, gestor, access)) {
+      return { profile, gestor, access, produtos: {}, settings: {}, materiais: {}, pedras: {}, insumos: {}, processos: {}, acabamentos: {}, embalagens: {}, custosOperacionais: {}, fichas: {}, precificacoes: {}, publicados: {}, usuarios: {}, acessos: {} };
+    }
+
+    const administrator = this.permission(profile, gestor, access, "administrar");
+    const [produtos, settings, materiais, pedras, insumos, processos, acabamentos, embalagens, custosOperacionais, fichas, precificacoes, publicados, usuarios, acessos] = await Promise.all([
       Firebase.get(paths.produtos, {}),
       Firebase.get(paths.settings, {}),
       Firebase.get(paths.materiais, {}),
@@ -53,24 +63,25 @@ export const Repository = {
       Firebase.get(paths.fichas, {}),
       Firebase.get(paths.precificacoes, {}),
       Firebase.get(paths.publicados, {}),
-      Firebase.get(paths.usuarios, {})
+      administrator ? Firebase.get(paths.usuarios, {}) : Promise.resolve({}),
+      administrator ? Firebase.get(paths.acessos, {}) : Promise.resolve({})
     ]);
-    return { profile, gestor: gestor === true, produtos, settings, materiais, pedras, insumos, processos, acabamentos, embalagens, custosOperacionais, fichas, precificacoes, publicados, usuarios };
+    return { profile, gestor, access, produtos, settings, materiais, pedras, insumos, processos, acabamentos, embalagens, custosOperacionais, fichas, precificacoes, publicados, usuarios, acessos };
   },
 
-  canAccess(profile = {}, gestor = false) {
+  canAccess(profile = {}, gestor = false, access = {}) {
     if (gestor) return true;
     if (profile.ativo === false) return false;
-    if (["dono", "gerente"].includes(String(profile.papel || "").toLowerCase())) return true;
-    return profile.permissoesPrecificacao?.acessar === true;
+    if (String(profile.papel || "").toLowerCase() === "dono") return true;
+    return access?.acessar === true;
   },
 
-  permission(profile = {}, gestor = false, name = "acessar") {
+  permission(profile = {}, gestor = false, access = {}, name = "acessar") {
     if (gestor) return true;
-    const role = String(profile.papel || "").toLowerCase();
-    if (role === "dono") return true;
-    if (role === "gerente" && name !== "publicar") return true;
-    return profile.permissoesPrecificacao?.[name] === true;
+    if (profile.ativo === false) return false;
+    if (String(profile.papel || "").toLowerCase() === "dono") return true;
+    if (access?.acessar !== true) return false;
+    return name === "acessar" ? true : access?.[name] === true;
   },
 
   async initializeDefaults(profile, user) {
@@ -289,10 +300,16 @@ export const Repository = {
   },
 
   async updateUserPermission(userId, permissions, profile, user) {
-    const path = `${paths.usuarios}/${userId}/permissoesPrecificacao`;
+    const path = `${paths.acessos}/${userId}`;
     const previous = await Firebase.get(path, {});
-    await Firebase.set(path, permissions);
-    await this.audit("permissoes_atualizadas", "usuarios", userId, { antes: previous, depois: permissions }, profile, user);
+    const payload = {
+      ...permissions,
+      atualizadoEm: nowIso(),
+      atualizadoPor: actor(profile, user)
+    };
+    await Firebase.set(path, payload);
+    await this.audit("permissoes_atualizadas", "precificacao/acessos", userId, { antes: previous, depois: payload }, profile, user);
+    return payload;
   },
 
   async audit(action, collection, documentId, details, profile, user) {
@@ -310,7 +327,7 @@ export const Repository = {
   },
 
   async exportModule() {
-    const keys = ["configuracoes", "materiais", "pedras", "insumos", "processos", "acabamentos", "embalagens", "custosOperacionais", "fichasTecnicas", "precificacoes", "aprovacoes", "precosPublicados", "importacoes", "indices", "auditoria", "restauracoes", "_schema"];
+    const keys = ["acessos", "configuracoes", "materiais", "pedras", "insumos", "processos", "acabamentos", "embalagens", "custosOperacionais", "fichasTecnicas", "precificacoes", "aprovacoes", "precosPublicados", "importacoes", "indices", "auditoria", "restauracoes", "_schema"];
     const entries = await Promise.all(keys.map(async (key) => [key, await Firebase.get(`${ROOT}/${key}`, {})]));
     return Object.fromEntries(entries);
   },
@@ -319,7 +336,7 @@ export const Repository = {
     if (!data || typeof data !== "object") throw new Error("Backup inválido.");
     const backupId = uid("restore");
     await Firebase.set(`${ROOT}/restauracoes/${backupId}`, { status: "iniciada", iniciadoEm: nowIso(), iniciadoPor: actor(profile, user) });
-    const safeKeys = ["configuracoes", "materiais", "pedras", "insumos", "processos", "acabamentos", "embalagens", "custosOperacionais", "fichasTecnicas", "precificacoes", "aprovacoes", "precosPublicados", "importacoes", "indices", "_schema"];
+    const safeKeys = ["acessos", "configuracoes", "materiais", "pedras", "insumos", "processos", "acabamentos", "embalagens", "custosOperacionais", "fichasTecnicas", "precificacoes", "aprovacoes", "precosPublicados", "importacoes", "indices", "_schema"];
     for (const key of safeKeys) {
       if (Object.hasOwn(data, key)) await Firebase.set(`${ROOT}/${key}`, data[key]);
     }
