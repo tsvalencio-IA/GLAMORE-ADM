@@ -3,7 +3,8 @@
 ## 1. Segurança de acesso
 
 - Entrar como dono.
-- Entrar como gerente.
+- Entrar como gerente sem acesso e confirmar bloqueio.
+- Conceder acesso ao gerente em `precificacao/acessos` e testar somente as permissões marcadas.
 - Confirmar bloqueio de usuário sem permissão.
 - Conceder somente `acessar` e verificar que o usuário não grava.
 - Conceder `editarFicha` e verificar que ele não publica.
@@ -57,3 +58,13 @@ Comparar cada resultado com a planilha usada pelo proprietário.
 - publicação somente pelo dono ou permissão explícita;
 - confirmar gravação em `precificacao/precosPublicados`;
 - confirmar que `produtos` permanece inalterado.
+
+## 6. Automação em lote
+
+- abrir a tela Automação em lote;
+- conferir linhas incompletas;
+- comparar pelo menos dez códigos com a planilha;
+- exportar CSV;
+- salvar somente dois itens de teste como rascunho;
+- confirmar que nenhum preço foi publicado automaticamente;
+- confirmar que estoque, vendas, lotes, movimentos e peças físicas permanecem iguais.

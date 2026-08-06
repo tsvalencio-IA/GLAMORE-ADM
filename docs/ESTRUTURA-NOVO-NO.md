@@ -11,6 +11,7 @@ Subnós:
 ```text
 precificacao/
 ├── _schema
+├── acessos
 ├── configuracoes/geral
 ├── materiais
 ├── pedras
@@ -46,3 +47,7 @@ precificacao/
 - auditoria operacional existente
 
 O catálogo `produtos` é lido para vincular a ficha técnica ao mesmo `produtoId`. A publicação do preço permanece em `precificacao/precosPublicados/{produtoId}`.
+
+## Automação em lote
+
+A automação em lote usa apenas fichas, catálogos e configurações dentro de `precificacao`. Os resultados só são gravados como rascunhos em `precificacao/precificacoes` após seleção e confirmação explícita.
